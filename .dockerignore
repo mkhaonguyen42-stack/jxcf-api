@@ -1,0 +1,20 @@
+# Build
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Use BuildKit for faster builds
+ARG DOCKER_BUILDKIT=1
+
+# Conditional builds for different platforms
+.dockerignore:
+  .git
+  .gitignore
+  .env
+  .env.local
+  node_modules
+  README.md
+  Makefile
+  .github
+  coverage
+  bin
+  dist
