@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jxcf/jxcf-api/internal/config"
+	"github.com/jxcf/jxcf-api/internal/middleware"
 	"github.com/jxcf/jxcf-api/internal/models"
 	"github.com/jxcf/jxcf-api/internal/service"
 )
@@ -19,9 +20,12 @@ func StartServer(cfg *config.Config) error {
 	// Add CORS middleware
 	r.Use(corsMiddleware())
 
+	// Add rate limiting middleware
+	rateLimiter := middleware.NewRateLimiter(cfg.RateLimitPerMinute, cfg.RateLimitBurst)
+	r.Use(middleware.RateLimitMiddleware(rateLimiter))
+
 	// Initialize analyzer service
 	analyzer := service.NewAnalyzer(cfg)
-	batchAnalyzer := service.NewBatchAnalyzer(cfg)
 
 	// Health check endpoint
 	r.GET("/api/health", func(c *gin.Context) {
@@ -77,53 +81,6 @@ func StartServer(cfg *config.Config) error {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 				Error: fmt.Sprintf("Analysis failed: %v", err),
-				Code:  http.StatusInternalServerError,
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, resp)
-	})
-
-	// Batch analysis endpoint
-	r.POST("/api/batch-analyze", func(c *gin.Context) {
-		var req models.BatchAnalyzeRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error: fmt.Sprintf("Invalid request: %v", err),
-				Code:  http.StatusBadRequest,
-			})
-			return
-		}
-
-		if len(req.Articles) == 0 {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error: "At least one article is required",
-				Code:  http.StatusBadRequest,
-			})
-			return
-		}
-
-		if len(req.Articles) > 100 {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error: "Batch size exceeds maximum of 100 articles",
-				Code:  http.StatusBadRequest,
-			})
-			return
-		}
-
-		// Trim and validate articles
-		for i := range req.Articles {
-			req.Articles[i].Content = strings.TrimSpace(req.Articles[i].Content)
-			if len(req.Articles[i].Content) < 10 || len(req.Articles[i].Content) > cfg.MaxArticleLength {
-				// Validation will be done in batch analyzer for each article
-			}
-		}
-
-		resp, err := batchAnalyzer.AnalyzeBatch(c.Request.Context(), &req)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-				Error: fmt.Sprintf("Batch analysis failed: %v", err),
 				Code:  http.StatusInternalServerError,
 			})
 			return
