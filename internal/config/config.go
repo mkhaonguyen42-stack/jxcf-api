@@ -20,6 +20,10 @@ type Config struct {
 	SummaryMinLength int
 	SummaryMaxLength int
 	KeywordCount int
+
+	// Rate Limiting Configuration
+	RateLimitPerMinute int
+	RateLimitBurst int
 }
 
 func Load() *Config {
@@ -35,6 +39,9 @@ func Load() *Config {
 		SummaryMinLength: getEnvInt("SUMMARY_MIN_LENGTH", 50),
 		SummaryMaxLength: getEnvInt("SUMMARY_MAX_LENGTH", 160),
 		KeywordCount: getEnvInt("KEYWORD_COUNT", 5),
+
+		RateLimitPerMinute: getEnvInt("RATE_LIMIT_PER_MINUTE", 100),
+		RateLimitBurst: getEnvInt("RATE_LIMIT_BURST", 20),
 	}
 }
 
